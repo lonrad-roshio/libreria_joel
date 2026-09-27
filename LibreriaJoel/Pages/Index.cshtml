@@ -1,0 +1,90 @@
+@page
+@model LibreriaJoel.Pages.IndexModel
+@{
+    ViewData["Title"] = "Inicio";
+}
+
+<div class="mb-4">
+    <h1 class="h3" style="color:var(--azul-profesional)">Panel principal</h1>
+    <p class="text-muted">Sistema de ventas e inventario &mdash; Librería JOEL</p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="p-3 tarjeta-resumen">
+            <div class="text-muted small">Ingresos de hoy</div>
+            <div class="fs-3 fw-bold">Bs. @Model.IngresosDeHoy.ToString("N2")</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="p-3 tarjeta-resumen">
+            <div class="text-muted small">Ventas registradas hoy</div>
+            <div class="fs-3 fw-bold">@Model.VentasDeHoy</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="p-3 @(Model.ProductosStockBajo.Any() ? "tarjeta-alerta" : "tarjeta-resumen")">
+            <div class="text-muted small">Productos con stock bajo</div>
+            <div class="fs-3 fw-bold">@Model.ProductosStockBajo.Count</div>
+        </div>
+    </div>
+</div>
+
+<h2 class="h5 mb-3">Menú del sistema</h2>
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card card-modulo h-100">
+            <div class="card-header">Clientes</div>
+            <div class="card-body d-flex flex-column">
+                <p class="card-text">Registrar y administrar los clientes de la librería.</p>
+                <a asp-page="/Clientes/Index" class="btn btn-primario mt-auto">Ir a Clientes</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-modulo h-100">
+            <div class="card-header">Inventario / Productos</div>
+            <div class="card-body d-flex flex-column">
+                <p class="card-text">Controlar el stock de bolígrafos, cuadernos, colores, hojas y más.</p>
+                <a asp-page="/Productos/Index" class="btn btn-primario mt-auto">Ir a Inventario</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-modulo h-100">
+            <div class="card-header">Ventas</div>
+            <div class="card-body d-flex flex-column">
+                <p class="card-text">Registrar ventas, calcular el total y generar el reporte del día.</p>
+                <a asp-page="/Ventas/Index" class="btn btn-primario mt-auto">Ir a Ventas</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.ProductosStockBajo.Any())
+{
+    <h2 class="h5 mb-3 text-danger">Alertas de stock bajo</h2>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Marca</th>
+                    <th>Stock disponible</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var producto in Model.ProductosStockBajo)
+                {
+                    <tr>
+                        <td>@producto.Nombre</td>
+                        <td>@producto.Marca</td>
+                        <td><span class="badge badge-stock-bajo">@producto.Stock @producto.UnidadMedida</span></td>
+                        <td><a asp-page="/Productos/Edit" asp-route-id="@producto.IdProducto" class="btn btn-sm btn-arena">Reabastecer</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

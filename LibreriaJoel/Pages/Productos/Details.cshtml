@@ -1,0 +1,25 @@
+@page "{id:int}"
+@model LibreriaJoel.Pages.Productos.DetailsModel
+@{
+    ViewData["Title"] = "Detalle del producto";
+}
+
+<h1 class="h4 mb-3" style="color:var(--azul-profesional)">Detalle del producto</h1>
+
+<div class="card card-modulo">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Id</dt><dd class="col-sm-9">@Model.Producto!.IdProducto</dd>
+            <dt class="col-sm-3">Nombre</dt><dd class="col-sm-9">@Model.Producto.Nombre</dd>
+            <dt class="col-sm-3">Marca</dt><dd class="col-sm-9">@Model.Producto.Marca</dd>
+            <dt class="col-sm-3">Lote</dt><dd class="col-sm-9">@(Model.Producto.Lote ?? "-")</dd>
+            <dt class="col-sm-3">Costo de entrada</dt><dd class="col-sm-9">Bs. @Model.Producto.CostoEntrada.ToString("N2")</dd>
+            <dt class="col-sm-3">Precio de venta</dt><dd class="col-sm-9">Bs. @Model.Producto.PrecioVenta.ToString("N2")</dd>
+            <dt class="col-sm-3">Fecha de ingreso</dt><dd class="col-sm-9">@Model.Producto.FechaIngreso.ToString("dd/MM/yyyy")</dd>
+            <dt class="col-sm-3">Stock</dt><dd class="col-sm-9">@Model.Producto.Stock @Model.Producto.UnidadMedida</dd>
+            <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">@(Model.Producto.Estado ? "Activo" : "Inactivo")</dd>
+        </dl>
+    </div>
+</div>
+
+<a asp-page="Index" class="btn btn-outline-secondary mt-3">Volver</a>

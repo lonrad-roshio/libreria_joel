@@ -1,0 +1,39 @@
+@page "{id:int}"
+@model LibreriaJoel.Pages.Ventas.DetailsModel
+@{
+    ViewData["Title"] = "Detalle de venta";
+}
+
+<h1 class="h4 mb-3" style="color:var(--azul-profesional)">Detalle de venta #@Model.Venta!.IdVenta</h1>
+
+<div class="card card-modulo mb-3">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">@Model.Venta.Fecha.ToString("dd/MM/yyyy")</dd>
+            <dt class="col-sm-3">Cliente</dt><dd class="col-sm-9">@(Model.Venta.Cliente?.Nombre ?? "N/D")</dd>
+            <dt class="col-sm-3">Forma de pago</dt><dd class="col-sm-9">@Model.Venta.FormaPago</dd>
+            <dt class="col-sm-3">Cajero</dt><dd class="col-sm-9">@Model.Venta.Cajero</dd>
+            <dt class="col-sm-3">Total</dt><dd class="col-sm-9 fw-bold">Bs. @Model.Venta.Total.ToString("N2")</dd>
+        </dl>
+    </div>
+</div>
+
+<h2 class="h6">Productos vendidos</h2>
+<table class="table table-sm bg-white">
+    <thead>
+        <tr><th>Producto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Venta.Detalle)
+        {
+            <tr>
+                <td>@item.NombreProducto</td>
+                <td>@item.Cantidad</td>
+                <td>Bs. @item.PrecioUnitario.ToString("N2")</td>
+                <td>Bs. @item.Subtotal.ToString("N2")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-page="Index" class="btn btn-outline-secondary mt-3">Volver</a>

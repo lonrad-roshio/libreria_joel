@@ -1,0 +1,98 @@
+@page
+@model LibreriaJoel.Pages.Ventas.CreateModel
+@{
+    ViewData["Title"] = "Nueva venta";
+}
+
+<h1 class="h4 mb-3" style="color:var(--azul-profesional)">Registrar nueva venta</h1>
+
+<div class="card card-modulo">
+    <div class="card-body">
+        <form method="post" id="formVenta">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label asp-for="Venta.Fecha" class="form-label">Fecha *</label>
+                    <input asp-for="Venta.Fecha" class="form-control" type="date" />
+                    <span asp-validation-for="Venta.Fecha" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Venta.IdCliente" class="form-label">Cliente *</label>
+                    <select asp-for="Venta.IdCliente" asp-items="Model.Clientes" class="form-select">
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                    <span asp-validation-for="Venta.IdCliente" class="text-danger"></span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label asp-for="Venta.FormaPago" class="form-label">Forma de pago *</label>
+                    <select asp-for="Venta.FormaPago" class="form-select">
+                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="QR">QR</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label asp-for="Venta.Cajero" class="form-label">Cajero *</label>
+                    <input asp-for="Venta.Cajero" class="form-control" />
+                    <span asp-validation-for="Venta.Cajero" class="text-danger"></span>
+                </div>
+            </div>
+
+            <hr />
+            <h2 class="h6">Detalle de productos vendidos</h2>
+
+            @if (!Model.Productos.Any())
+            {
+                <div class="alert alert-warning">No hay productos activos con stock disponible para vender.</div>
+            }
+
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th style="width:50%">Producto</th>
+                        <th style="width:20%">Cantidad</th>
+                        <th style="width:20%">Subtotal</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoDetalleVenta"></tbody>
+            </table>
+
+            <button type="button" id="btnAgregarProducto" class="btn btn-sm btn-outline-primary mb-3">+ Agregar producto</button>
+
+            <div class="text-end mb-3">
+                <span class="fs-5">Total: Bs. <span id="totalVenta">0.00</span></span>
+            </div>
+
+            <input type="hidden" asp-for="Venta.DetalleJson" id="Venta_DetalleJson" />
+            <input type="hidden" asp-for="Venta.Total" id="Venta_Total_oculto" value="0" />
+
+            <button type="submit" class="btn btn-primario" @(Model.Productos.Any() ? "" : "disabled")>Registrar venta</button>
+            <a asp-page="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/ventas.js"></script>
+    <script>
+        @{
+            // BUG CORREGIDO: antes se serializaba en PascalCase (IdProducto, PrecioVenta...) y
+            // ventas.js leía las propiedades en camelCase (p.idProducto, p.precioVenta...), por
+            // lo que todo salía "undefined" en el combo de productos. Se fuerza camelCase aquí.
+            var opcionesJson = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+        }
+        const productosDisponibles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.Productos.Select(p => new { p.IdProducto, p.Nombre, p.Marca, p.PrecioVenta, p.Stock }), opcionesJson));
+
+        document.addEventListener('DOMContentLoaded', function () {
+            iniciarFormularioVenta(productosDisponibles, []);
+
+            // Antes de enviar, sincroniza el total visible con el campo oculto que el modelo espera.
+            document.getElementById('formVenta').addEventListener('submit', function () {
+                document.getElementById('Venta_Total_oculto').value = document.getElementById('totalVenta').textContent;
+            });
+        });
+    </script>
+}

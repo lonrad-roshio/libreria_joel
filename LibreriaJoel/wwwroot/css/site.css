@@ -1,0 +1,99 @@
+:root {
+    --azul-profesional: #001F5B;
+    --azul-secundario: #003876;
+    --arena: #C5AC8F;
+    --blanco: #FFFFFF;
+}
+
+body {
+    background-color: #f4f5f7;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #222;
+}
+
+.barra-marca {
+    background: linear-gradient(90deg, var(--azul-profesional), var(--azul-secundario));
+}
+
+.navbar-brand span {
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+
+.nav-link {
+    font-weight: 500;
+}
+
+.nav-link.active,
+.nav-link:hover {
+    color: var(--arena) !important;
+}
+
+.pie-pagina {
+    background-color: var(--azul-profesional);
+    color: var(--blanco);
+    margin-top: 3rem;
+}
+
+.card-modulo {
+    border: none;
+    border-radius: .75rem;
+    box-shadow: 0 2px 10px rgba(0, 31, 91, .12);
+    transition: transform .15s ease-in-out;
+}
+
+.card-modulo:hover {
+    transform: translateY(-3px);
+}
+
+.card-modulo .card-header {
+    background-color: var(--azul-profesional);
+    color: var(--blanco);
+    border-radius: .75rem .75rem 0 0 !important;
+    font-weight: 600;
+}
+
+.btn-primario {
+    background-color: var(--azul-profesional);
+    border-color: var(--azul-profesional);
+    color: var(--blanco);
+}
+
+.btn-primario:hover {
+    background-color: var(--azul-secundario);
+    border-color: var(--azul-secundario);
+    color: var(--blanco);
+}
+
+.btn-arena {
+    background-color: var(--arena);
+    border-color: var(--arena);
+    color: var(--azul-profesional);
+    font-weight: 600;
+}
+
+.btn-arena:hover {
+    background-color: #b39a7c;
+    color: var(--blanco);
+}
+
+table thead {
+    background-color: var(--azul-profesional);
+    color: var(--blanco);
+}
+
+.badge-stock-bajo {
+    background-color: #b02a37;
+}
+
+.tarjeta-resumen {
+    border-left: 6px solid var(--arena);
+    background-color: var(--blanco);
+    border-radius: .5rem;
+}
+
+.tarjeta-alerta {
+    border-left: 6px solid #b02a37;
+    background-color: #fff5f5;
+    border-radius: .5rem;
+}

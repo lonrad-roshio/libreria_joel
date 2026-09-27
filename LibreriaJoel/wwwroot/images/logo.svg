@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 90" width="220" height="90">
+  <defs>
+    <style>
+      .fondo { fill: #001F5B; }
+      .texto-joel { fill: #FFFFFF; font-family: Georgia, 'Times New Roman', serif; font-weight: bold; }
+      .texto-libreria { fill: #FFFFFF; font-family: Arial, sans-serif; }
+    </style>
+  </defs>
+  <rect x="4" y="30" width="150" height="30" rx="15" class="fondo" />
+  <polygon points="154,30 154,60 178,45" class="fondo" />
+  <rect x="14" y="30" width="4" height="30" fill="#C5AC8F" />
+  <rect x="24" y="30" width="4" height="30" fill="#C5AC8F" />
+  <text x="12" y="20" class="texto-libreria" font-size="14">Librería</text>
+  <text x="34" y="50" class="texto-joel" font-size="18">JOEL</text>
+</svg>
