@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
 namespace LibreriaJoel.Models;
-
+// MIGAJERO . COM de la rosio
 /// <summary>
 /// Representa a un cliente de la librería. Entidad de persistencia (EF Core).
 /// Cumple con el Principio de Responsabilidad Única (S de SOLID): solo modela datos del cliente,

@@ -1,5 +1,5 @@
 namespace LibreriaJoel.Models;
-
+// quiero editar el nefasto resultado de esta orrible situacion
 /// <summary>
 /// Línea de detalle dentro de una venta (producto + cantidad + precio unitario).
 /// NO es una tabla independiente: el trabajo práctico limita el diseño a 3 tablas
