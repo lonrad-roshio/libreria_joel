@@ -4,64 +4,54 @@ using System.Text.Json;
 
 namespace LibreriaJoel.Models;
 
-/// <summary>
-/// Opciones de serialización compartidas para el detalle de venta (JSON). Se usa camelCase
-/// porque así lo genera el JavaScript del formulario (wwwroot/js/ventas.js) y así se guardó
-/// también en los datos de ejemplo del script SQL; PropertyNameCaseInsensitive agrega una
-/// capa extra de seguridad por si en algún punto llega el JSON en otra convención de mayúsculas.
-/// BUG CORREGIDO: antes se usaba JsonSerializer.Serialize/Deserialize sin estas opciones, lo
-/// que hacía que las claves en minúscula del JS (idProducto, cantidad, etc.) no calzaran con
-/// las propiedades en PascalCase de DetalleVentaItem (IdProducto, Cantidad, etc.), y por eso
-/// el detalle de la venta se guardaba en cero / no se veía en la pantalla de detalle.
-/// </summary>
-internal static class OpcionesJsonVenta
-{
-    public static readonly JsonSerializerOptions Instancia = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true
-    };
-}
-
-/// <summary>
-/// Representa una venta (recibo interno; el dueño confirmó en la entrevista que NO se emite factura).
-/// La lista de productos vendidos se guarda en la columna JSON DetalleJson (ver DetalleVentaItem).
-/// </summary>
+[Table("venta")]
 public class Venta
 {
-    [Key]
+    private List<DetalleVentaItem> _detalle = new();
+
     public int IdVenta { get; set; }
 
-    [Required(ErrorMessage = "La fecha es obligatoria.")]
     [DataType(DataType.Date)]
     public DateTime Fecha { get; set; } = DateTime.Today;
 
-    [Required(ErrorMessage = "Debe indicar el cliente.")]
-    [ForeignKey(nameof(Cliente))]
     public int IdCliente { get; set; }
-    public Cliente? Cliente { get; set; }
 
-    [Required(ErrorMessage = "Debe registrar al menos un producto en la venta.")]
+    [Required]
+    [Column(TypeName = "json")]
     public string DetalleJson { get; set; } = "[]";
 
-    [Required(ErrorMessage = "El total es obligatorio.")]
-    [Range(0.01, 10000000, ErrorMessage = "El total debe ser mayor a 0.")]
+    [Column(TypeName = "decimal(10,2)")]
     public decimal Total { get; set; }
 
     [Required(ErrorMessage = "La forma de pago es obligatoria.")]
     [StringLength(20)]
-    public string FormaPago { get; set; } = "EFECTIVO"; // EFECTIVO o QR, según entrevista
+    public string FormaPago { get; set; } = "EFECTIVO";
 
-    [Required(ErrorMessage = "El cajero que atiende es obligatorio.")]
+    [Required(ErrorMessage = "El cajero es obligatorio.")]
     [StringLength(100)]
     public string Cajero { get; set; } = string.Empty;
+
+    [ForeignKey(nameof(IdCliente))]
+    public Cliente? Cliente { get; set; }
 
     [NotMapped]
     public List<DetalleVentaItem> Detalle
     {
-        get => string.IsNullOrWhiteSpace(DetalleJson)
-            ? new List<DetalleVentaItem>()
-            : JsonSerializer.Deserialize<List<DetalleVentaItem>>(DetalleJson, OpcionesJsonVenta.Instancia) ?? new List<DetalleVentaItem>();
-        set => DetalleJson = JsonSerializer.Serialize(value, OpcionesJsonVenta.Instancia);
+        get
+        {
+            if (_detalle.Count > 0)
+                return _detalle;
+
+            if (string.IsNullOrWhiteSpace(DetalleJson))
+                return _detalle;
+
+            _detalle = JsonSerializer.Deserialize<List<DetalleVentaItem>>(DetalleJson) ?? new();
+            return _detalle;
+        }
+        set
+        {
+            _detalle = value ?? new();
+            DetalleJson = JsonSerializer.Serialize(_detalle);
+        }
     }
 }

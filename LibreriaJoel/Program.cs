@@ -1,20 +1,22 @@
 using LibreriaJoel.Data;
 using LibreriaJoel.Repositories;
+using LibreriaJoel.Repositories.Interfaces;
 using LibreriaJoel.Services;
 using LibreriaJoel.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------- Servicios de infraestructura ----------
+var connectionString = builder.Configuration.GetConnectionString("LibreriaJoelConnection")
+    ?? throw new InvalidOperationException("No se encontró ConnectionStrings:LibreriaJoelConnection.");
+var dataBase = DataBase.GetInstancia();
+dataBase.Configurar(connectionString);
+
 builder.Services.AddRazorPages();
+builder.Services.AddDbContext<LibreriaJoelContext>(ConfigurarBaseDeDatos);
+builder.Services.AddScoped<DbContext>(ObtenerContexto);
 
-var connectionString = builder.Configuration.GetConnectionString("LibreriaJoelConnection");
-builder.Services.AddDbContext<LibreriaJoelContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
-
-// ---------- Inyección de dependencias (Principio D de SOLID: Dependency Inversion) ----------
-// Las Razor Pages dependen de abstracciones (interfaces), nunca de implementaciones concretas.
+builder.Services.AddScoped(typeof(IRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
 builder.Services.AddScoped<IVentaRepository, VentaRepository>();
@@ -36,5 +38,16 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
 app.MapRazorPages();
-
 app.Run();
+
+void ConfigurarBaseDeDatos(DbContextOptionsBuilder options)
+{
+    options.UseMySql(
+        dataBase.ObtenerCadenaConexion(),
+        new MySqlServerVersion(new Version(8, 0, 0)));
+}
+
+DbContext ObtenerContexto(IServiceProvider servicios)
+{
+    return servicios.GetRequiredService<LibreriaJoelContext>();
+}

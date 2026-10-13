@@ -1,49 +1,83 @@
-using LibreriaJoel.Data;
 using LibreriaJoel.Models;
+using LibreriaJoel.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibreriaJoel.Repositories;
 
-public class ProductoRepository : IProductoRepository
+public class ProductoRepository : GenericRepository<Producto>, IProductoRepository
 {
-    private readonly LibreriaJoelContext _context;
-
-    public ProductoRepository(LibreriaJoelContext context)
+    public ProductoRepository(DbContext database) : base(database)
     {
-        _context = context;
     }
 
-    public async Task<List<Producto>> ObtenerTodosAsync() =>
-        await _context.Productos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
+    public Task<List<Producto>> BuscarAsync(string? filtro)
+    {
+        return BuscarProductosAsync(filtro);
+    }
 
-    public async Task<Producto?> ObtenerPorIdAsync(int id) =>
-        await _context.Productos.FirstOrDefaultAsync(p => p.IdProducto == id);
+    private async Task<List<Producto>> BuscarProductosAsync(string? filtro)
+    {
+        var productos = await SelectAsync();
+        var resultado = new List<Producto>();
+        string texto = string.Empty;
 
-    public async Task<List<Producto>> BuscarPorNombreOMarcaAsync(string texto) =>
-        await _context.Productos.AsNoTracking()
-            .Where(p => p.Nombre.Contains(texto) || p.Marca.Contains(texto))
-            .OrderBy(p => p.Nombre)
-            .ToListAsync();
+        if (!string.IsNullOrWhiteSpace(filtro))
+            texto = filtro.Trim();
 
-    public async Task<List<Producto>> ObtenerConStockBajoAsync(decimal umbral) =>
-        await _context.Productos.AsNoTracking()
-            .Where(p => p.Estado && p.Stock <= umbral)
-            .OrderBy(p => p.Stock)
-            .ToListAsync();
+        foreach (var producto in productos)
+        {
+            if (texto.Length == 0
+                || producto.Nombre.Contains(texto, StringComparison.OrdinalIgnoreCase)
+                || producto.Marca.Contains(texto, StringComparison.OrdinalIgnoreCase))
+            {
+                resultado.Add(producto);
+            }
+        }
 
-    public async Task AgregarAsync(Producto producto) => await _context.Productos.AddAsync(producto);
+        resultado.Sort(CompararPorNombre);
+        return resultado;
+    }
 
-    public void Actualizar(Producto producto) => _context.Productos.Update(producto);
+    public async Task<List<Producto>> ObtenerStockBajoAsync(decimal stockMinimo)
+    {
+        var productos = await SelectAsync();
+        var resultado = new List<Producto>();
+        foreach (var producto in productos)
+        {
+            if (producto.Estado && producto.Stock <= stockMinimo)
+                resultado.Add(producto);
+        }
 
-    public void Eliminar(Producto producto) => _context.Productos.Remove(producto);
+        resultado.Sort(CompararPorStock);
+        return resultado;
+    }
 
-    public async Task<bool> ExisteAsync(int id) => await _context.Productos.AnyAsync(p => p.IdProducto == id);
+    public async Task<bool> ExisteNombreMarcaAsync(
+        string nombre,
+        string marca,
+        int? excluirId = null)
+    {
+        var productos = await SelectAsync();
+        foreach (var producto in productos)
+        {
+            if (producto.Nombre == nombre
+                && producto.Marca == marca
+                && producto.IdProducto != excluirId)
+            {
+                return true;
+            }
+        }
 
-    public async Task<bool> NombreDuplicadoAsync(string nombre, string marca, int idExcluido) =>
-        await _context.Productos.AnyAsync(p =>
-            p.Nombre.ToLower() == nombre.ToLower() &&
-            p.Marca.ToLower() == marca.ToLower() &&
-            p.IdProducto != idExcluido);
+        return false;
+    }
 
-    public async Task GuardarCambiosAsync() => await _context.SaveChangesAsync();
+    private static int CompararPorNombre(Producto primero, Producto segundo)
+    {
+        return string.Compare(primero.Nombre, segundo.Nombre, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int CompararPorStock(Producto primero, Producto segundo)
+    {
+        return primero.Stock.CompareTo(segundo.Stock);
+    }
 }

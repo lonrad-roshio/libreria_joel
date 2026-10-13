@@ -27,7 +27,9 @@ public class IndexModel : PageModel
     public async Task OnGetAsync()
     {
         Ventas = await _ventaService.ListarAsync(Fecha);
-        TotalFiltrado = Ventas.Sum(v => v.Total);
+        TotalFiltrado = 0;
+        foreach (var venta in Ventas)
+            TotalFiltrado += venta.Total;
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(int id)

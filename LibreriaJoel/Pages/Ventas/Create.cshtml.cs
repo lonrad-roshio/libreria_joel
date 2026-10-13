@@ -4,11 +4,17 @@ using LibreriaJoel.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Text.Json;
 
 namespace LibreriaJoel.Pages.Ventas;
 
 public class CreateModel : PageModel
 {
+    private static readonly JsonSerializerOptions OpcionesJson = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly IVentaService _ventaService;
     private readonly IClienteService _clienteService;
     private readonly IProductoService _productoService;
@@ -25,6 +31,7 @@ public class CreateModel : PageModel
 
     public List<SelectListItem> Clientes { get; set; } = new();
     public List<Producto> Productos { get; set; } = new();
+    public string ProductosJson { get; set; } = "[]";
 
     public async Task OnGetAsync()
     {
@@ -62,8 +69,18 @@ public class CreateModel : PageModel
     private async Task CargarListasAsync()
     {
         var clientes = await _clienteService.ListarAsync(null);
-        Clientes = clientes.Select(c => new SelectListItem($"{c.Nombre}", c.IdCliente.ToString())).ToList();
+        Clientes = new List<SelectListItem>();
+        foreach (var cliente in clientes)
+            Clientes.Add(new SelectListItem(cliente.Nombre, cliente.IdCliente.ToString()));
 
-        Productos = (await _productoService.ListarAsync(null)).Where(p => p.Estado && p.Stock > 0).ToList();
+        var todosProductos = await _productoService.ListarAsync(null);
+        Productos = new List<Producto>();
+        foreach (var producto in todosProductos)
+        {
+            if (producto.Estado && producto.Stock > 0)
+                Productos.Add(producto);
+        }
+
+        ProductosJson = JsonSerializer.Serialize(Productos, OpcionesJson);
     }
 }

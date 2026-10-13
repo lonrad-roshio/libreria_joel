@@ -1,198 +1,209 @@
+using System.Text.Json;
 using ClosedXML.Excel;
 using LibreriaJoel.Models;
-using LibreriaJoel.Repositories;
+using LibreriaJoel.Repositories.Interfaces;
 using LibreriaJoel.Services.Exceptions;
 using LibreriaJoel.Services.Interfaces;
 
 namespace LibreriaJoel.Services;
 
-/// <summary>
-/// Reglas de negocio de Venta: valida el detalle, descuenta stock (resolviendo el problema
-/// de control de inventario planteado en la entrevista, incluyendo venta de unidades sueltas)
-/// y genera el reporte de ventas en Excel que el dueño pidió al final del día.
-/// </summary>
 public class VentaService : IVentaService
 {
-    private readonly IVentaRepository _ventaRepositorio;
-    private readonly IProductoRepository _productoRepositorio;
-    private readonly IClienteRepository _clienteRepositorio;
+    private readonly IVentaRepository _ventas;
+    private readonly IProductoRepository _productos;
+    private readonly IClienteRepository _clientes;
 
     public VentaService(
-        IVentaRepository ventaRepositorio,
-        IProductoRepository productoRepositorio,
-        IClienteRepository clienteRepositorio)
+        IVentaRepository ventas,
+        IProductoRepository productos,
+        IClienteRepository clientes)
     {
-        _ventaRepositorio = ventaRepositorio;
-        _productoRepositorio = productoRepositorio;
-        _clienteRepositorio = clienteRepositorio;
+        _ventas = ventas;
+        _productos = productos;
+        _clientes = clientes;
     }
 
-    public async Task<List<Venta>> ListarAsync(DateTime? fecha) =>
-        fecha.HasValue
-            ? await _ventaRepositorio.ObtenerPorFechaAsync(fecha.Value)
-            : await _ventaRepositorio.ObtenerTodasAsync();
-
-    public async Task<Venta?> ObtenerAsync(int id) => await _ventaRepositorio.ObtenerPorIdAsync(id);
-
-    public async Task<Venta> RegistrarVentaAsync(Venta venta)
+    public Task<List<Venta>> ListarAsync(DateTime? fecha = null)
     {
-        if (!await _clienteRepositorio.ExisteAsync(venta.IdCliente))
-            throw new ValidacionException("Debe seleccionar un cliente válido.");
+        return _ventas.ListarAsync(fecha);
+    }
 
-        var detalle = venta.Detalle;
-        if (detalle.Count == 0)
-            throw new ValidacionException("La venta debe tener al menos un producto.");
+    public Task<Venta?> ObtenerAsync(int id)
+    {
+        return _ventas.FindAsync(id);
+    }
 
-        decimal total = 0;
+    public Task<decimal> ObtenerIngresosDelDiaAsync(DateTime fecha)
+    {
+        return _ventas.ObtenerIngresosDelDiaAsync(fecha);
+    }
 
-        foreach (var item in detalle)
-        {
-            var producto = await _productoRepositorio.ObtenerPorIdAsync(item.IdProducto)
-                ?? throw new ValidacionException($"El producto con Id {item.IdProducto} no existe.");
-
-            if (!producto.Estado)
-                throw new ValidacionException($"El producto '{producto.Nombre}' no está disponible para la venta.");
-
-            if (item.Cantidad <= 0)
-                throw new ValidacionException($"La cantidad de '{producto.Nombre}' debe ser mayor a 0.");
-
-            if (item.Cantidad > producto.Stock)
-                throw new ValidacionException(
-                    $"Stock insuficiente para '{producto.Nombre}'. Disponible: {producto.Stock}, solicitado: {item.Cantidad}.");
-
-            item.NombreProducto = producto.Nombre;
-            item.PrecioUnitario = producto.PrecioVenta;
-            total += item.Subtotal;
-
-            producto.Stock -= item.Cantidad;
-            _productoRepositorio.Actualizar(producto);
-        }
-
+    public async Task RegistrarVentaAsync(Venta venta)
+    {
+        var detalle = ObtenerDetalle(venta);
+        await ValidarVentaAsync(venta, detalle);
+        await AjustarStockAsync(detalle, 1);
         venta.Detalle = detalle;
-        venta.Total = Math.Round(total, 2);
-        venta.Fecha = venta.Fecha == default ? DateTime.Today : venta.Fecha;
-
-        await _ventaRepositorio.AgregarAsync(venta);
-        await _ventaRepositorio.GuardarCambiosAsync();
-        return venta;
+        venta.Total = CalcularTotal(detalle);
+        await _ventas.InsertAsync(venta);
     }
 
-    public async Task ActualizarAsync(Venta ventaActualizada, Venta ventaOriginal)
+    public async Task ActualizarAsync(Venta venta, Venta ventaOriginal)
     {
-        // Devolver el stock de la venta original antes de aplicar los nuevos valores.
-        foreach (var item in ventaOriginal.Detalle)
-        {
-            var producto = await _productoRepositorio.ObtenerPorIdAsync(item.IdProducto);
-            if (producto is not null)
-            {
-                producto.Stock += item.Cantidad;
-                _productoRepositorio.Actualizar(producto);
-            }
-        }
+        var existente = await _ventas.FindAsync(ventaOriginal.IdVenta)
+            ?? throw new ValidacionException("La venta no existe.");
+        var detalleNuevo = ObtenerDetalle(venta);
+        var detalleAnterior = ObtenerDetalle(ventaOriginal);
+        await ValidarVentaAsync(venta, detalleNuevo);
 
-        var nuevoDetalle = ventaActualizada.Detalle;
-        if (nuevoDetalle.Count == 0)
-            throw new ValidacionException("La venta debe tener al menos un producto.");
-
-        decimal total = 0;
-        foreach (var item in nuevoDetalle)
-        {
-            var producto = await _productoRepositorio.ObtenerPorIdAsync(item.IdProducto)
-                ?? throw new ValidacionException($"El producto con Id {item.IdProducto} no existe.");
-
-            if (item.Cantidad > producto.Stock)
-                throw new ValidacionException(
-                    $"Stock insuficiente para '{producto.Nombre}'. Disponible: {producto.Stock}, solicitado: {item.Cantidad}.");
-
-            item.NombreProducto = producto.Nombre;
-            item.PrecioUnitario = producto.PrecioVenta;
-            total += item.Subtotal;
-
-            producto.Stock -= item.Cantidad;
-            _productoRepositorio.Actualizar(producto);
-        }
-
-        ventaOriginal.Fecha = ventaActualizada.Fecha;
-        ventaOriginal.IdCliente = ventaActualizada.IdCliente;
-        ventaOriginal.FormaPago = ventaActualizada.FormaPago;
-        ventaOriginal.Cajero = ventaActualizada.Cajero;
-        ventaOriginal.Detalle = nuevoDetalle;
-        ventaOriginal.Total = Math.Round(total, 2);
-
-        _ventaRepositorio.Actualizar(ventaOriginal);
-        await _ventaRepositorio.GuardarCambiosAsync();
+        await AjustarStockAsync(detalleAnterior, -1);
+        await AjustarStockAsync(detalleNuevo, 1);
+        existente.Fecha = venta.Fecha;
+        existente.IdCliente = venta.IdCliente;
+        existente.FormaPago = venta.FormaPago;
+        existente.Cajero = venta.Cajero.Trim();
+        existente.Detalle = detalleNuevo;
+        existente.Total = CalcularTotal(detalleNuevo);
+        await _ventas.UpdateAsync(existente);
     }
 
     public async Task EliminarAsync(int id)
     {
-        var venta = await _ventaRepositorio.ObtenerPorIdAsync(id)
-            ?? throw new ValidacionException("La venta que intenta eliminar no existe.");
+        var venta = await _ventas.FindAsync(id)
+            ?? throw new ValidacionException("La venta no existe.");
+        var detalle = ObtenerDetalle(venta);
 
-        // Devolver stock al inventario antes de eliminar (evita perder el control del inventario).
-        foreach (var item in venta.Detalle)
-        {
-            var producto = await _productoRepositorio.ObtenerPorIdAsync(item.IdProducto);
-            if (producto is not null)
-            {
-                producto.Stock += item.Cantidad;
-                _productoRepositorio.Actualizar(producto);
-            }
-        }
-
-        _ventaRepositorio.Eliminar(venta);
-        await _ventaRepositorio.GuardarCambiosAsync();
-    }
-
-    public async Task<decimal> ObtenerIngresosDelDiaAsync(DateTime fecha)
-    {
-        var ventas = await _ventaRepositorio.ObtenerPorFechaAsync(fecha);
-        return ventas.Sum(v => v.Total);
+        await AjustarStockAsync(detalle, -1);
+        await _ventas.DeleteAsync(venta);
     }
 
     public async Task<byte[]> GenerarReporteExcelAsync(DateTime desde, DateTime hasta)
     {
-        var ventas = (await _ventaRepositorio.ObtenerTodasAsync())
-            .Where(v => v.Fecha.Date >= desde.Date && v.Fecha.Date <= hasta.Date)
-            .ToList();
+        if (hasta.Date < desde.Date)
+            throw new ValidacionException("La fecha final no puede ser anterior a la fecha inicial.");
 
-        using var libro = new XLWorkbook();
-        var hoja = libro.Worksheets.Add("Reporte de Ventas");
+        var ventas = await _ventas.ObtenerEntreFechasAsync(desde, hasta);
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Ventas");
+        sheet.Cell(1, 1).Value = "Fecha";
+        sheet.Cell(1, 2).Value = "Cliente";
+        sheet.Cell(1, 3).Value = "Forma de pago";
+        sheet.Cell(1, 4).Value = "Cajero";
+        sheet.Cell(1, 5).Value = "Total";
 
-        hoja.Cell(1, 1).Value = "Librería JOEL - Reporte de Ventas";
-        hoja.Range(1, 1, 1, 7).Merge().Style.Font.SetBold().Font.FontSize = 14;
-
-        string[] encabezados = { "Nro. Venta", "Fecha", "Cliente", "Forma de Pago", "Cajero", "Cant. Items", "Total (Bs)" };
-        for (int i = 0; i < encabezados.Length; i++)
+        for (var index = 0; index < ventas.Count; index++)
         {
-            var celda = hoja.Cell(3, i + 1);
-            celda.Value = encabezados[i];
-            celda.Style.Font.SetBold();
-            celda.Style.Fill.BackgroundColor = XLColor.FromHtml("#001F5B");
-            celda.Style.Font.FontColor = XLColor.White;
+            var venta = ventas[index];
+            var row = index + 2;
+            sheet.Cell(row, 1).Value = venta.Fecha;
+            sheet.Cell(row, 2).Value = venta.Cliente?.Nombre ?? string.Empty;
+            sheet.Cell(row, 3).Value = venta.FormaPago;
+            sheet.Cell(row, 4).Value = venta.Cajero;
+            sheet.Cell(row, 5).Value = venta.Total;
         }
 
-        int fila = 4;
-        foreach (var venta in ventas)
+        var columnas = sheet.Columns();
+        columnas.AdjustToContents();
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    private static List<DetalleVentaItem> ObtenerDetalle(Venta venta)
+    {
+        if (venta.Detalle.Count > 0)
+            return venta.Detalle;
+
+        if (string.IsNullOrWhiteSpace(venta.DetalleJson))
+            return new List<DetalleVentaItem>();
+
+        try
         {
-            hoja.Cell(fila, 1).Value = venta.IdVenta;
-            hoja.Cell(fila, 2).Value = venta.Fecha.ToString("dd/MM/yyyy");
-            hoja.Cell(fila, 3).Value = venta.Cliente?.Nombre ?? "N/D";
-            hoja.Cell(fila, 4).Value = venta.FormaPago;
-            hoja.Cell(fila, 5).Value = venta.Cajero;
-            hoja.Cell(fila, 6).Value = venta.Detalle.Count;
-            hoja.Cell(fila, 7).Value = venta.Total;
-            fila++;
+            return JsonSerializer.Deserialize<List<DetalleVentaItem>>(venta.DetalleJson) ?? new();
+        }
+        catch (JsonException exception)
+        {
+            throw new ValidacionException($"El detalle de la venta no tiene un formato válido: {exception.Message}");
+        }
+    }
+
+    private async Task ValidarVentaAsync(Venta venta, List<DetalleVentaItem> detalle)
+    {
+        var cliente = await _clientes.FindAsync(venta.IdCliente);
+        if (cliente is null)
+            throw new ValidacionException("El cliente seleccionado no existe.");
+        if (detalle.Count == 0)
+            throw new ValidacionException("La venta debe incluir al menos un producto.");
+        foreach (var item in detalle)
+        {
+            if (!Validaciones.ValidarIdentificador(item.IdProducto)
+                || !Validaciones.ValidarCantidad(item.Cantidad)
+                || !Validaciones.ValidarPrecio(0.01m, item.PrecioUnitario))
+            {
+                throw new ValidacionException("Cada producto debe tener una cantidad y un precio mayores a cero.");
+            }
+        }
+        if (string.IsNullOrWhiteSpace(venta.Cajero))
+            throw new ValidacionException("El cajero es obligatorio.");
+        if (string.IsNullOrWhiteSpace(venta.FormaPago))
+            throw new ValidacionException("La forma de pago es obligatoria.");
+
+        var productos = await _productos.SelectAsync();
+        foreach (var item in detalle)
+        {
+            Producto? producto = BuscarProducto(productos, item.IdProducto);
+            if (producto == null)
+                throw new ValidacionException($"El producto {item.IdProducto} no existe.");
+            if (!producto.Estado)
+                throw new ValidacionException($"El producto '{producto.Nombre}' está inactivo.");
+        }
+    }
+
+    private async Task AjustarStockAsync(List<DetalleVentaItem> detalle, int factor)
+    {
+        var productosProcesados = new HashSet<int>();
+        foreach (var item in detalle)
+        {
+            if (productosProcesados.Contains(item.IdProducto))
+                continue;
+
+            productosProcesados.Add(item.IdProducto);
+            var producto = await _productos.FindAsync(item.IdProducto);
+            if (producto == null)
+                throw new ValidacionException($"El producto {item.IdProducto} no existe.");
+
+            decimal cantidad = 0;
+            foreach (var detalleItem in detalle)
+            {
+                if (detalleItem.IdProducto == item.IdProducto)
+                    cantidad += detalleItem.Cantidad;
+            }
+
+            var nuevoStock = producto.Stock - cantidad * factor;
+            if (nuevoStock < 0)
+                throw new ValidacionException($"Stock insuficiente para '{producto.Nombre}'. Disponible: {producto.Stock}.");
+            producto.Stock = nuevoStock;
+            await _productos.UpdateAsync(producto);
+        }
+    }
+
+    private static decimal CalcularTotal(List<DetalleVentaItem> detalle)
+    {
+        decimal total = 0;
+        foreach (var item in detalle)
+            total += item.Subtotal;
+
+        return total;
+    }
+
+    private static Producto? BuscarProducto(List<Producto> productos, int id)
+    {
+        foreach (var producto in productos)
+        {
+            if (producto.IdProducto == id)
+                return producto;
         }
 
-        hoja.Cell(fila + 1, 6).Value = "TOTAL:";
-        hoja.Cell(fila + 1, 6).Style.Font.SetBold();
-        hoja.Cell(fila + 1, 7).Value = ventas.Sum(v => v.Total);
-        hoja.Cell(fila + 1, 7).Style.Font.SetBold();
-
-        hoja.Columns().AdjustToContents();
-
-        using var memoria = new MemoryStream();
-        libro.SaveAs(memoria);
-        return memoria.ToArray();
+        return null;
     }
 }

@@ -23,6 +23,7 @@ public class IndexModel : PageModel
     {
         ProductosStockBajo = await _productoService.ObtenerAlertasStockBajoAsync();
         IngresosDeHoy = await _ventaService.ObtenerIngresosDelDiaAsync(DateTime.Today);
-        VentasDeHoy = (await _ventaService.ListarAsync(DateTime.Today)).Count;
+        var ventas = await _ventaService.ListarAsync(DateTime.Today);
+        VentasDeHoy = ventas.Count;
     }
 }

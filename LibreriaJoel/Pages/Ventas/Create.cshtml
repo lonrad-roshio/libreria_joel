@@ -77,21 +77,17 @@
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/ventas.js"></script>
     <script>
-        @{
-            // BUG CORREGIDO: antes se serializaba en PascalCase (IdProducto, PrecioVenta...) y
-            // ventas.js leía las propiedades en camelCase (p.idProducto, p.precioVenta...), por
-            // lo que todo salía "undefined" en el combo de productos. Se fuerza camelCase aquí.
-            var opcionesJson = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
-        }
-        const productosDisponibles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            Model.Productos.Select(p => new { p.IdProducto, p.Nombre, p.Marca, p.PrecioVenta, p.Stock }), opcionesJson));
+        const productosDisponibles = @Html.Raw(Model.ProductosJson);
 
         document.addEventListener('DOMContentLoaded', function () {
             iniciarFormularioVenta(productosDisponibles, []);
 
             // Antes de enviar, sincroniza el total visible con el campo oculto que el modelo espera.
-            document.getElementById('formVenta').addEventListener('submit', function () {
-                document.getElementById('Venta_Total_oculto').value = document.getElementById('totalVenta').textContent;
+            var formulario = document.getElementById('formVenta');
+            formulario.addEventListener('submit', function () {
+                var totalOculto = document.getElementById('Venta_Total_oculto');
+                var totalVisible = document.getElementById('totalVenta');
+                totalOculto.value = totalVisible.textContent;
             });
         });
     </script>

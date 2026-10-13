@@ -1,40 +1,27 @@
-using LibreriaJoel.Data;
 using LibreriaJoel.Models;
+using LibreriaJoel.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibreriaJoel.Repositories;
 
-public class ClienteRepository : IClienteRepository
+public class ClienteRepository : GenericRepository<Cliente>, IClienteRepository
 {
-    private readonly LibreriaJoelContext _context;
+    private readonly IRepository<Venta> _ventas;
 
-    public ClienteRepository(LibreriaJoelContext context)
+    public ClienteRepository(DbContext database, IRepository<Venta> ventas) : base(database)
     {
-        _context = context;
+        _ventas = ventas;
     }
 
-    public async Task<List<Cliente>> ObtenerTodosAsync() =>
-        await _context.Clientes.AsNoTracking().OrderBy(c => c.Nombre).ToListAsync();
+    public async Task<bool> TieneVentasAsync(int idCliente)
+    {
+        var ventas = await _ventas.SelectAsync();
+        foreach (var venta in ventas)
+        {
+            if (venta.IdCliente == idCliente)
+                return true;
+        }
 
-    public async Task<Cliente?> ObtenerPorIdAsync(int id) =>
-        await _context.Clientes.FirstOrDefaultAsync(c => c.IdCliente == id);
-
-    public async Task<List<Cliente>> BuscarPorNombreAsync(string texto) =>
-        await _context.Clientes.AsNoTracking()
-            .Where(c => c.Nombre.Contains(texto))
-            .OrderBy(c => c.Nombre)
-            .ToListAsync();
-
-    public async Task AgregarAsync(Cliente cliente) => await _context.Clientes.AddAsync(cliente);
-
-    public void Actualizar(Cliente cliente) => _context.Clientes.Update(cliente);
-
-    public void Eliminar(Cliente cliente) => _context.Clientes.Remove(cliente);
-
-    public async Task<bool> ExisteAsync(int id) => await _context.Clientes.AnyAsync(c => c.IdCliente == id);
-
-    public async Task<bool> TieneVentasAsociadasAsync(int idCliente) =>
-        await _context.Ventas.AnyAsync(v => v.IdCliente == idCliente);
-
-    public async Task GuardarCambiosAsync() => await _context.SaveChangesAsync();
+        return false;
+    }
 }

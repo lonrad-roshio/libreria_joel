@@ -70,20 +70,16 @@
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/ventas.js"></script>
     <script>
-        @{
-            // Mismo bug de casing que en Create.cshtml: se fuerza camelCase para que coincida
-            // con lo que espera wwwroot/js/ventas.js.
-            var opcionesJson = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
-        }
-        const productosDisponibles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            Model.Productos.Select(p => new { p.IdProducto, p.Nombre, p.Marca, p.PrecioVenta, p.Stock }), opcionesJson));
-        const detalleInicial = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            Model.DetalleInicial.Select(d => new { d.IdProducto, d.Cantidad }), opcionesJson));
+        const productosDisponibles = @Html.Raw(Model.ProductosJson);
+        const detalleInicial = @Html.Raw(Model.DetalleInicialJson);
 
         document.addEventListener('DOMContentLoaded', function () {
             iniciarFormularioVenta(productosDisponibles, detalleInicial);
-            document.getElementById('formVenta').addEventListener('submit', function () {
-                document.getElementById('Venta_Total_oculto').value = document.getElementById('totalVenta').textContent;
+            var formulario = document.getElementById('formVenta');
+            formulario.addEventListener('submit', function () {
+                var totalOculto = document.getElementById('Venta_Total_oculto');
+                var totalVisible = document.getElementById('totalVenta');
+                totalOculto.value = totalVisible.textContent;
             });
         });
     </script>

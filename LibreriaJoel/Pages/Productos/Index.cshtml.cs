@@ -25,7 +25,9 @@ public class IndexModel : PageModel
     {
         Productos = await _productoService.ListarAsync(Filtro);
         var alertas = await _productoService.ObtenerAlertasStockBajoAsync();
-        IdsStockBajo = alertas.Select(p => p.IdProducto).ToHashSet();
+        IdsStockBajo = new HashSet<int>();
+        foreach (var producto in alertas)
+            IdsStockBajo.Add(producto.IdProducto);
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(int id)

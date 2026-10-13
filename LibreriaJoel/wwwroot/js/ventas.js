@@ -12,24 +12,31 @@
 
         function recalcularTotal() {
             let total = 0;
-            cuerpoTabla.querySelectorAll('tr').forEach(function (fila) {
+            const filas = cuerpoTabla.querySelectorAll('tr');
+            for (let i = 0; i < filas.length; i++) {
+                const fila = filas[i];
                 const precio = parseFloat(fila.dataset.precio || '0');
-                const cantidad = parseFloat(fila.querySelector('.input-cantidad').value || '0');
+                const campoCantidad = fila.querySelector('.input-cantidad');
+                const cantidad = parseFloat(campoCantidad.value || '0');
                 const subtotal = precio * cantidad;
-                fila.querySelector('.celda-subtotal').textContent = subtotal.toFixed(2);
+                const celdaSubtotal = fila.querySelector('.celda-subtotal');
+                celdaSubtotal.textContent = subtotal.toFixed(2);
                 total += subtotal;
-            });
+            }
             totalTexto.textContent = total.toFixed(2);
             sincronizarJson();
         }
 
         function sincronizarJson() {
             const detalle = [];
-            cuerpoTabla.querySelectorAll('tr').forEach(function (fila) {
+            const filas = cuerpoTabla.querySelectorAll('tr');
+            for (let i = 0; i < filas.length; i++) {
+                const fila = filas[i];
                 const idProducto = parseInt(fila.dataset.idproducto, 10);
                 const nombreProducto = fila.dataset.nombre;
                 const precio = parseFloat(fila.dataset.precio || '0');
-                const cantidad = parseFloat(fila.querySelector('.input-cantidad').value || '0');
+                const campoCantidad = fila.querySelector('.input-cantidad');
+                const cantidad = parseFloat(campoCantidad.value || '0');
                 if (cantidad > 0) {
                     detalle.push({
                         idProducto: idProducto,
@@ -38,12 +45,19 @@
                         precioUnitario: precio
                     });
                 }
-            });
+            }
             campoOculto.value = JSON.stringify(detalle);
         }
 
         function agregarFila(idProductoPreseleccionado, cantidadPreseleccionada) {
-            const idxSeleccion = productos.findIndex(p => p.idProducto === idProductoPreseleccionado);
+            let idxSeleccion = -1;
+            for (let i = 0; i < productos.length; i++) {
+                if (productos[i].idProducto === idProductoPreseleccionado) {
+                    idxSeleccion = i;
+                    break;
+                }
+            }
+
             const productoInicial = idxSeleccion >= 0 ? productos[idxSeleccion] : productos[0];
             if (!productoInicial) return;
 
@@ -52,9 +66,12 @@
             fila.dataset.nombre = productoInicial.nombre;
             fila.dataset.precio = productoInicial.precioVenta;
 
-            const opciones = productos.map(p =>
-                `<option value="${p.idProducto}" data-precio="${p.precioVenta}" data-stock="${p.stock}" ${p.idProducto === productoInicial.idProducto ? 'selected' : ''}>${p.nombre} (${p.marca}) - Stock: ${p.stock}</option>`
-            ).join('');
+            let opciones = '';
+            for (let i = 0; i < productos.length; i++) {
+                const producto = productos[i];
+                const seleccionado = producto.idProducto === productoInicial.idProducto ? 'selected' : '';
+                opciones += `<option value="${producto.idProducto}" data-precio="${producto.precioVenta}" data-stock="${producto.stock}" ${seleccionado}>${producto.nombre} (${producto.marca}) - Stock: ${producto.stock}</option>`;
+            }
 
             fila.innerHTML = `
                 <td>
@@ -68,7 +85,8 @@
 
             cuerpoTabla.appendChild(fila);
 
-            fila.querySelector('.select-producto').addEventListener('change', function (e) {
+            const selectorProducto = fila.querySelector('.select-producto');
+            selectorProducto.addEventListener('change', function (e) {
                 const opt = e.target.selectedOptions[0];
                 fila.dataset.idproducto = e.target.value;
                 fila.dataset.nombre = opt.textContent;
@@ -76,9 +94,11 @@
                 recalcularTotal();
             });
 
-            fila.querySelector('.input-cantidad').addEventListener('input', recalcularTotal);
+            const campoCantidad = fila.querySelector('.input-cantidad');
+            campoCantidad.addEventListener('input', recalcularTotal);
 
-            fila.querySelector('.btn-quitar').addEventListener('click', function () {
+            const botonQuitar = fila.querySelector('.btn-quitar');
+            botonQuitar.addEventListener('click', function () {
                 fila.remove();
                 recalcularTotal();
             });
@@ -91,14 +111,19 @@
         });
 
         if (detalleInicial && detalleInicial.length > 0) {
-            detalleInicial.forEach(item => agregarFila(item.idProducto, item.cantidad));
+            for (let i = 0; i < detalleInicial.length; i++) {
+                const item = detalleInicial[i];
+                agregarFila(item.idProducto, item.cantidad);
+            }
         } else {
             agregarFila(null, 1);
         }
 
-        document.getElementById('formVenta').addEventListener('submit', function (e) {
+        const formulario = document.getElementById('formVenta');
+        formulario.addEventListener('submit', function (e) {
             sincronizarJson();
-            if (cuerpoTabla.querySelectorAll('tr').length === 0) {
+            const filas = cuerpoTabla.querySelectorAll('tr');
+            if (filas.length === 0) {
                 e.preventDefault();
                 alert('Debe agregar al menos un producto a la venta.');
             }

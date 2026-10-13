@@ -1,84 +1,79 @@
 using LibreriaJoel.Models;
-using LibreriaJoel.Repositories;
+using LibreriaJoel.Repositories.Interfaces;
 using LibreriaJoel.Services.Exceptions;
 using LibreriaJoel.Services.Interfaces;
-using Microsoft.Extensions.Configuration;
 
 namespace LibreriaJoel.Services;
 
-/// <summary>
-/// Reglas de negocio para Producto, incluyendo el control de stock y las alertas de
-/// "quedan pocos paquetes" que el dueño pidió expresamente en la entrevista.
-/// </summary>
 public class ProductoService : IProductoService
 {
-    private readonly IProductoRepository _repositorio;
-    private readonly decimal _stockMinimoAlerta;
+    private readonly IProductoRepository _repository;
+    private readonly decimal _stockMinimo;
 
-    public ProductoService(IProductoRepository repositorio, IConfiguration configuracion)
+    public ProductoService(IProductoRepository repository, IConfiguration configuration)
     {
-        _repositorio = repositorio;
-        _stockMinimoAlerta = configuracion.GetValue<decimal?>("ParametrosNegocio:StockMinimoAlerta") ?? 5m;
+        _repository = repository;
+        _stockMinimo = configuration.GetValue<decimal>("ParametrosNegocio:StockMinimoAlerta", 5m);
     }
 
-    public async Task<List<Producto>> ListarAsync(string? filtro) =>
-        string.IsNullOrWhiteSpace(filtro)
-            ? await _repositorio.ObtenerTodosAsync()
-            : await _repositorio.BuscarPorNombreOMarcaAsync(filtro.Trim());
+    public Task<List<Producto>> ListarAsync(string? filtro)
+    {
+        return _repository.BuscarAsync(filtro);
+    }
 
-    public async Task<Producto?> ObtenerAsync(int id) => await _repositorio.ObtenerPorIdAsync(id);
+    public Task<List<Producto>> ObtenerAlertasStockBajoAsync()
+    {
+        return _repository.ObtenerStockBajoAsync(_stockMinimo);
+    }
 
-    public async Task<List<Producto>> ObtenerAlertasStockBajoAsync() =>
-        await _repositorio.ObtenerConStockBajoAsync(_stockMinimoAlerta);
+    public Task<Producto?> ObtenerAsync(int id)
+    {
+        return _repository.FindAsync(id);
+    }
 
     public async Task CrearAsync(Producto producto)
     {
-        await ValidarProductoAsync(producto);
-        await _repositorio.AgregarAsync(producto);
-        await _repositorio.GuardarCambiosAsync();
+        await ValidarAsync(producto);
+        producto.Nombre = producto.Nombre.Trim();
+        producto.Marca = producto.Marca.Trim();
+        producto.UnidadMedida = producto.UnidadMedida.Trim();
+        await _repository.InsertAsync(producto);
     }
 
     public async Task ActualizarAsync(Producto producto)
     {
-        await ValidarProductoAsync(producto);
+        var existente = await _repository.FindAsync(producto.IdProducto)
+            ?? throw new ValidacionException("El producto no existe.");
 
-        if (!await _repositorio.ExisteAsync(producto.IdProducto))
-            throw new ValidacionException("El producto que intenta actualizar no existe.");
-
-        _repositorio.Actualizar(producto);
-        await _repositorio.GuardarCambiosAsync();
+        await ValidarAsync(producto, producto.IdProducto);
+        existente.Nombre = producto.Nombre.Trim();
+        existente.Lote = producto.Lote?.Trim();
+        existente.Marca = producto.Marca.Trim();
+        existente.CostoEntrada = producto.CostoEntrada;
+        existente.PrecioVenta = producto.PrecioVenta;
+        existente.FechaIngreso = producto.FechaIngreso;
+        existente.Stock = producto.Stock;
+        existente.UnidadMedida = producto.UnidadMedida.Trim();
+        existente.Estado = producto.Estado;
+        await _repository.UpdateAsync(existente);
     }
 
     public async Task EliminarAsync(int id)
     {
-        var producto = await _repositorio.ObtenerPorIdAsync(id)
-            ?? throw new ValidacionException("El producto que intenta eliminar no existe.");
-
-        _repositorio.Eliminar(producto);
-        await _repositorio.GuardarCambiosAsync();
+        var producto = await _repository.FindAsync(id)
+            ?? throw new ValidacionException("El producto no existe.");
+        await _repository.DeleteAsync(producto);
     }
 
-    private async Task ValidarProductoAsync(Producto producto)
+    private async Task ValidarAsync(Producto producto, int? excluirId = null)
     {
-        if (string.IsNullOrWhiteSpace(producto.Nombre))
-            throw new ValidacionException("El nombre del producto es obligatorio.");
-
-        if (string.IsNullOrWhiteSpace(producto.Marca))
-            throw new ValidacionException("La marca es obligatoria.");
-
-        if (producto.CostoEntrada <= 0)
-            throw new ValidacionException("El costo de entrada debe ser mayor a 0.");
-
-        if (producto.PrecioVenta <= 0)
-            throw new ValidacionException("El precio de venta debe ser mayor a 0.");
-
-        if (producto.PrecioVenta < producto.CostoEntrada)
+        if (string.IsNullOrWhiteSpace(producto.Nombre) || string.IsNullOrWhiteSpace(producto.Marca))
+            throw new ValidacionException("El nombre y la marca son obligatorios.");
+        if (!Validaciones.ValidarPrecio(producto.CostoEntrada, producto.PrecioVenta))
             throw new ValidacionException("El precio de venta no puede ser menor al costo de entrada.");
-
-        if (producto.Stock < 0)
+        if (!Validaciones.ValidarStock(producto.Stock))
             throw new ValidacionException("El stock no puede ser negativo.");
-
-        if (await _repositorio.NombreDuplicadoAsync(producto.Nombre, producto.Marca, producto.IdProducto))
+        if (await _repository.ExisteNombreMarcaAsync(producto.Nombre.Trim(), producto.Marca.Trim(), excluirId))
             throw new ValidacionException("Ya existe un producto con el mismo nombre y marca.");
     }
 }
