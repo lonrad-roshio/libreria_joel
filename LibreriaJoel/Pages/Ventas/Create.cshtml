@@ -18,11 +18,8 @@
                     <span asp-validation-for="Venta.Fecha" class="text-danger"></span>
                 </div>
                 <div class="col-md-4 mb-3">
-                    <label asp-for="Venta.IdCliente" class="form-label">Cliente *</label>
-                    <select asp-for="Venta.IdCliente" asp-items="Model.Clientes" class="form-select">
-                        <option value="">-- Seleccione --</option>
-                    </select>
-                    <span asp-validation-for="Venta.IdCliente" class="text-danger"></span>
+                    <label class="form-label">Usuario que registra</label>
+                    <input class="form-control" value="@User.Identity?.Name" readonly />
                 </div>
                 <div class="col-md-3 mb-3">
                     <label asp-for="Venta.FormaPago" class="form-label">Forma de pago *</label>
@@ -30,11 +27,6 @@
                         <option value="EFECTIVO">Efectivo</option>
                         <option value="QR">QR</option>
                     </select>
-                </div>
-                <div class="col-md-2 mb-3">
-                    <label asp-for="Venta.Cajero" class="form-label">Cajero *</label>
-                    <input asp-for="Venta.Cajero" class="form-control" />
-                    <span asp-validation-for="Venta.Cajero" class="text-danger"></span>
                 </div>
             </div>
 
@@ -64,11 +56,21 @@
                 <span class="fs-5">Total: Bs. <span id="totalVenta">0.00</span></span>
             </div>
 
-            <input type="hidden" asp-for="Venta.DetalleJson" id="Venta_DetalleJson" />
             <input type="hidden" asp-for="Venta.Total" id="Venta_Total_oculto" value="0" />
 
             <button type="submit" class="btn btn-primario" @(Model.Productos.Any() ? "" : "disabled")>Registrar venta</button>
             <a asp-page="Index" class="btn btn-outline-secondary">Cancelar</a>
+
+            <select id="productosDisponibles" class="d-none" aria-hidden="true">
+                @foreach (var producto in Model.Productos)
+                {
+                    <option value="@producto.IdProducto"
+                            data-nombre="@producto.Nombre"
+                            data-marca="@producto.Marca"
+                            data-precio="@producto.PrecioVenta"
+                            data-stock="@producto.Stock">@producto.Nombre</option>
+                }
+            </select>
         </form>
     </div>
 </div>
@@ -77,10 +79,8 @@
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/ventas.js"></script>
     <script>
-        const productosDisponibles = @Html.Raw(Model.ProductosJson);
-
         document.addEventListener('DOMContentLoaded', function () {
-            iniciarFormularioVenta(productosDisponibles, []);
+            iniciarFormularioVenta([]);
 
             // Antes de enviar, sincroniza el total visible con el campo oculto que el modelo espera.
             var formulario = document.getElementById('formVenta');

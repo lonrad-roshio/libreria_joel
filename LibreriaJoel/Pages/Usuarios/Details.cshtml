@@ -1,0 +1,23 @@
+@page "/Usuarios/Detalle/{id:int}"
+@model LibreriaJoel.Pages.Usuarios.DetailsModel
+@{
+    ViewData["Title"] = "Detalle del usuario";
+}
+
+<h1 class="h4 mb-3" style="color:var(--azul-profesional)">Detalle del usuario</h1>
+
+<div class="card card-modulo">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Id</dt><dd class="col-sm-9">@Model.Usuario!.IdUsuario</dd>
+            <dt class="col-sm-3">Nombre de usuario</dt><dd class="col-sm-9">@Model.Usuario.NombreUsuario</dd>
+            <dt class="col-sm-3">Nombre</dt><dd class="col-sm-9">@Model.Usuario.Nombre</dd>
+            <dt class="col-sm-3">Rol</dt><dd class="col-sm-9">@Model.Usuario.Rol</dd>
+            <dt class="col-sm-3">Dirección</dt><dd class="col-sm-9">@(Model.Usuario.Direccion ?? "-")</dd>
+            <dt class="col-sm-3">Celular</dt><dd class="col-sm-9">@(Model.Usuario.Celular ?? "-")</dd>
+            <dt class="col-sm-3">NIT/CI</dt><dd class="col-sm-9">@(Model.Usuario.NitCi ?? "-")</dd>
+        </dl>
+    </div>
+</div>
+
+<a asp-page="Index" class="btn btn-outline-secondary mt-3">Volver</a>

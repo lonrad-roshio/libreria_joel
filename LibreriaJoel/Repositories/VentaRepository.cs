@@ -6,37 +6,29 @@ namespace LibreriaJoel.Repositories;
 
 public class VentaRepository : GenericRepository<Venta>, IVentaRepository
 {
-    private readonly IRepository<Cliente> _clientes;
-
-    public VentaRepository(DbContext database, IRepository<Cliente> clientes) : base(database)
+    public VentaRepository(DbContext database) : base(database)
     {
-        _clientes = clientes;
     }
 
     public override async Task<Venta?> FindAsync(int id)
     {
-        var venta = await Data.FindAsync(id);
-        if (venta == null)
-            return null;
-
-        venta.Cliente = await _clientes.FindAsync(venta.IdCliente);
-        return venta;
+        return await Data
+            .Include(venta => venta.Usuario)
+            .Include(venta => venta.Detalles)
+                .ThenInclude(detalle => detalle.Producto)
+            .SingleOrDefaultAsync(venta => venta.IdVenta == id);
     }
 
     public async Task<List<Venta>> ListarAsync(DateTime? fecha = null)
     {
-        var ventas = await SelectAsync();
-        var clientes = await ObtenerClientesAsync();
-        var resultado = new List<Venta>();
-
-        foreach (var venta in ventas)
-        {
-            if (!fecha.HasValue || venta.Fecha.Date == fecha.Value.Date)
-            {
-                venta.Cliente = BuscarCliente(clientes, venta.IdCliente);
-                resultado.Add(venta);
-            }
-        }
+        var ventas = await Data.AsNoTracking()
+            .Include(venta => venta.Usuario)
+            .Include(venta => venta.Detalles)
+                .ThenInclude(detalle => detalle.Producto)
+            .ToListAsync();
+        var resultado = fecha.HasValue
+            ? ventas.FindAll(venta => venta.Fecha.Date == fecha.Value.Date)
+            : ventas;
 
         resultado.Sort(CompararPorFecha);
         return resultado;
@@ -44,17 +36,13 @@ public class VentaRepository : GenericRepository<Venta>, IVentaRepository
 
     public async Task<List<Venta>> ObtenerEntreFechasAsync(DateTime desde, DateTime hasta)
     {
-        var ventas = await SelectAsync();
-        var clientes = await ObtenerClientesAsync();
-        var resultado = new List<Venta>();
-        foreach (var venta in ventas)
-        {
-            if (venta.Fecha.Date >= desde.Date && venta.Fecha.Date <= hasta.Date)
-            {
-                venta.Cliente = BuscarCliente(clientes, venta.IdCliente);
-                resultado.Add(venta);
-            }
-        }
+        var ventas = await Data.AsNoTracking()
+            .Include(venta => venta.Usuario)
+            .Include(venta => venta.Detalles)
+                .ThenInclude(detalle => detalle.Producto)
+            .ToListAsync();
+        var resultado = ventas.FindAll(venta =>
+            venta.Fecha.Date >= desde.Date && venta.Fecha.Date <= hasta.Date);
 
         resultado.Sort(CompararPorFecha);
         return resultado;
@@ -68,22 +56,6 @@ public class VentaRepository : GenericRepository<Venta>, IVentaRepository
             total += venta.Total;
 
         return total;
-    }
-
-    private async Task<List<Cliente>> ObtenerClientesAsync()
-    {
-        return await _clientes.SelectAsync();
-    }
-
-    private static Cliente? BuscarCliente(List<Cliente> clientes, int idCliente)
-    {
-        foreach (var cliente in clientes)
-        {
-            if (cliente.IdCliente == idCliente)
-                return cliente;
-        }
-
-        return null;
     }
 
     private static int CompararPorFecha(Venta primera, Venta segunda)

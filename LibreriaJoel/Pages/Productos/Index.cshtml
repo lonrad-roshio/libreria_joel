@@ -1,12 +1,18 @@
-@page
+@page "/Almacen"
 @model LibreriaJoel.Pages.Productos.IndexModel
 @{
-    ViewData["Title"] = "Inventario";
+    ViewData["Title"] = "Almacén";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3" style="color:var(--azul-profesional)">Inventario de productos</h1>
-    <a asp-page="Create" class="btn btn-primario">+ Nuevo producto</a>
+    <div>
+        <h1 class="h3 mb-1" style="color:var(--azul-profesional)">Almacén</h1>
+        <p class="text-muted mb-0">Consulta de productos y existencias.</p>
+    </div>
+    @if (User.IsInRole("ADMIN"))
+    {
+        <a asp-page="Create" class="btn btn-primario">+ Ingresar producto</a>
+    }
 </div>
 
 <form method="get" class="row g-2 mb-3">
@@ -62,8 +68,11 @@
                     </td>
                     <td class="text-end">
                         <a asp-page="Details" asp-route-id="@producto.IdProducto" class="btn btn-sm btn-outline-secondary">Ver</a>
-                        <a asp-page="Edit" asp-route-id="@producto.IdProducto" class="btn btn-sm btn-outline-primary">Editar</a>
-                        <a asp-page="Delete" asp-route-id="@producto.IdProducto" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                        @if (User.IsInRole("ADMIN"))
+                        {
+                            <a asp-page="Edit" asp-route-id="@producto.IdProducto" class="btn btn-sm btn-outline-primary">Editar</a>
+                            <a asp-page="Delete" asp-route-id="@producto.IdProducto" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                        }
                     </td>
                 </tr>
             }

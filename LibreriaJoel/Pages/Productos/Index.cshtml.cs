@@ -1,5 +1,4 @@
 using LibreriaJoel.Models;
-using LibreriaJoel.Services.Exceptions;
 using LibreriaJoel.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -30,17 +29,4 @@ public class IndexModel : PageModel
             IdsStockBajo.Add(producto.IdProducto);
     }
 
-    public async Task<IActionResult> OnPostEliminarAsync(int id)
-    {
-        try
-        {
-            await _productoService.EliminarAsync(id);
-            TempData["Mensaje"] = "Producto eliminado correctamente.";
-        }
-        catch (ValidacionException ex)
-        {
-            TempData["Error"] = ex.Message;
-        }
-        return RedirectToPage();
-    }
 }

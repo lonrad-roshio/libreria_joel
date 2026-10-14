@@ -1,22 +1,27 @@
 using LibreriaJoel.Models;
 using LibreriaJoel.Services.Exceptions;
 using LibreriaJoel.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace LibreriaJoel.Pages.Clientes;
+namespace LibreriaJoel.Pages.Usuarios;
 
+[Authorize(Roles = "ADMIN")]
 public class CreateModel : PageModel
 {
-    private readonly IClienteService _clienteService;
+    private readonly IUsuarioService _usuarioService;
 
-    public CreateModel(IClienteService clienteService)
+    public CreateModel(IUsuarioService usuarioService)
     {
-        _clienteService = clienteService;
+        _usuarioService = usuarioService;
     }
 
     [BindProperty]
-    public Cliente Cliente { get; set; } = new();
+    public Usuario Usuario { get; set; } = new();
+
+    [BindProperty]
+    public string Contrasena { get; set; } = string.Empty;
 
     public void OnGet() { }
 
@@ -27,8 +32,8 @@ public class CreateModel : PageModel
 
         try
         {
-            await _clienteService.CrearAsync(Cliente);
-            TempData["Mensaje"] = "Cliente registrado correctamente.";
+            await _usuarioService.CrearAsync(Usuario, Contrasena);
+            TempData["Mensaje"] = "Usuario registrado correctamente.";
             return RedirectToPage("Index");
         }
         catch (ValidacionException ex)

@@ -1,14 +1,24 @@
 // Lógica del formulario de registro/edición de ventas: permite agregar varias líneas de
-// producto (detalle) y serializa todo como JSON en el campo oculto Venta_DetalleJson,
-// tal como lo requiere el modelo Venta (ver Models/Venta.cs).
+// producto y prepara el detalle como campos de formulario para el modelo Venta.
 (function () {
     'use strict';
 
-    function iniciarFormularioVenta(productos, detalleInicial) {
+    function iniciarFormularioVenta(detalleInicial) {
         const cuerpoTabla = document.getElementById('cuerpoDetalleVenta');
-        const campoOculto = document.getElementById('Venta_DetalleJson');
         const totalTexto = document.getElementById('totalVenta');
         const btnAgregar = document.getElementById('btnAgregarProducto');
+        const opcionesProductos = Array.from(
+            document.getElementById('productosDisponibles').options
+        );
+        const productos = opcionesProductos.map(function (opcion) {
+            return {
+                idProducto: Number(opcion.value),
+                nombre: opcion.dataset.nombre,
+                marca: opcion.dataset.marca,
+                precioVenta: Number(opcion.dataset.precio),
+                stock: Number(opcion.dataset.stock)
+            };
+        });
 
         function recalcularTotal() {
             let total = 0;
@@ -24,29 +34,22 @@
                 total += subtotal;
             }
             totalTexto.textContent = total.toFixed(2);
-            sincronizarJson();
+            sincronizarCampos();
         }
 
-        function sincronizarJson() {
-            const detalle = [];
+        function sincronizarCampos() {
             const filas = cuerpoTabla.querySelectorAll('tr');
             for (let i = 0; i < filas.length; i++) {
                 const fila = filas[i];
-                const idProducto = parseInt(fila.dataset.idproducto, 10);
-                const nombreProducto = fila.dataset.nombre;
-                const precio = parseFloat(fila.dataset.precio || '0');
+                const campoProducto = fila.querySelector('.input-idproducto');
+                const campoPrecio = fila.querySelector('.input-precio');
                 const campoCantidad = fila.querySelector('.input-cantidad');
-                const cantidad = parseFloat(campoCantidad.value || '0');
-                if (cantidad > 0) {
-                    detalle.push({
-                        idProducto: idProducto,
-                        nombreProducto: nombreProducto,
-                        cantidad: cantidad,
-                        precioUnitario: precio
-                    });
-                }
+                campoProducto.name = `Venta.Detalles[${i}].IdProducto`;
+                campoPrecio.name = `Venta.Detalles[${i}].PrecioUnitario`;
+                campoCantidad.name = `Venta.Detalles[${i}].Cantidad`;
+                campoProducto.value = fila.dataset.idproducto;
+                campoPrecio.value = fila.dataset.precio;
             }
-            campoOculto.value = JSON.stringify(detalle);
         }
 
         function agregarFila(idProductoPreseleccionado, cantidadPreseleccionada) {
@@ -58,12 +61,13 @@
                 }
             }
 
-            const productoInicial = idxSeleccion >= 0 ? productos[idxSeleccion] : productos[0];
+            const productoInicial = idxSeleccion >= 0
+                ? productos[idxSeleccion]
+                : productos.find(producto => producto.stock > 0);
             if (!productoInicial) return;
 
             const fila = document.createElement('tr');
             fila.dataset.idproducto = productoInicial.idProducto;
-            fila.dataset.nombre = productoInicial.nombre;
             fila.dataset.precio = productoInicial.precioVenta;
 
             let opciones = '';
@@ -75,6 +79,8 @@
 
             fila.innerHTML = `
                 <td>
+                    <input type="hidden" class="input-idproducto" />
+                    <input type="hidden" class="input-precio" />
                     <select class="form-select select-producto">${opciones}</select>
                 </td>
                 <td><input type="number" class="form-control input-cantidad" min="0.01" step="0.01" value="${cantidadPreseleccionada || 1}" /></td>
@@ -89,7 +95,6 @@
             selectorProducto.addEventListener('change', function (e) {
                 const opt = e.target.selectedOptions[0];
                 fila.dataset.idproducto = e.target.value;
-                fila.dataset.nombre = opt.textContent;
                 fila.dataset.precio = opt.dataset.precio;
                 recalcularTotal();
             });
@@ -121,7 +126,7 @@
 
         const formulario = document.getElementById('formVenta');
         formulario.addEventListener('submit', function (e) {
-            sincronizarJson();
+            sincronizarCampos();
             const filas = cuerpoTabla.querySelectorAll('tr');
             if (filas.length === 0) {
                 e.preventDefault();

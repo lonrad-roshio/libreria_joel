@@ -1,11 +1,13 @@
 using LibreriaJoel.Models;
 using LibreriaJoel.Services.Exceptions;
 using LibreriaJoel.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LibreriaJoel.Pages.Productos;
 
+[Authorize(Roles = "ADMIN")]
 public class EditModel : PageModel
 {
     private readonly IProductoService _productoService;

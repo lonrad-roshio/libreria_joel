@@ -1,29 +1,34 @@
 using LibreriaJoel.Models;
 using LibreriaJoel.Services.Exceptions;
 using LibreriaJoel.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace LibreriaJoel.Pages.Clientes;
+namespace LibreriaJoel.Pages.Usuarios;
 
+[Authorize(Roles = "ADMIN")]
 public class EditModel : PageModel
 {
-    private readonly IClienteService _clienteService;
+    private readonly IUsuarioService _usuarioService;
 
-    public EditModel(IClienteService clienteService)
+    public EditModel(IUsuarioService usuarioService)
     {
-        _clienteService = clienteService;
+        _usuarioService = usuarioService;
     }
 
     [BindProperty]
-    public Cliente Cliente { get; set; } = new();
+    public Usuario Usuario { get; set; } = new();
+
+    [BindProperty]
+    public string? Contrasena { get; set; }
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        var cliente = await _clienteService.ObtenerAsync(id);
-        if (cliente is null) return RedirectToPage("Index");
+        var usuario = await _usuarioService.ObtenerAsync(id);
+        if (usuario is null) return RedirectToPage("Index");
 
-        Cliente = cliente;
+        Usuario = usuario;
         return Page();
     }
 
@@ -34,8 +39,8 @@ public class EditModel : PageModel
 
         try
         {
-            await _clienteService.ActualizarAsync(Cliente);
-            TempData["Mensaje"] = "Cliente actualizado correctamente.";
+            await _usuarioService.ActualizarAsync(Usuario, Contrasena);
+            TempData["Mensaje"] = "Usuario actualizado correctamente.";
             return RedirectToPage("Index");
         }
         catch (ValidacionException ex)

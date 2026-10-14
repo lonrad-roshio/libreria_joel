@@ -32,21 +32,33 @@
 
 <h2 class="h5 mb-3">Menú del sistema</h2>
 <div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="card card-modulo h-100">
-            <div class="card-header">Clientes</div>
-            <div class="card-body d-flex flex-column">
-                <p class="card-text">Registrar y administrar los clientes de la librería.</p>
-                <a asp-page="/Clientes/Index" class="btn btn-primario mt-auto">Ir a Clientes</a>
+    @if (User.IsInRole("ADMIN"))
+    {
+        <div class="col-md-4">
+            <div class="card card-modulo h-100">
+                <div class="card-header">Registro</div>
+                <div class="card-body d-flex flex-column">
+                    <p class="card-text">Registrar cuentas de administrador y cajero.</p>
+                    <a asp-page="/Usuarios/Create" class="btn btn-primario mt-auto">Registrar usuario</a>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="col-md-4">
+            <div class="card card-modulo h-100">
+                <div class="card-header">Control de usuarios</div>
+                <div class="card-body d-flex flex-column">
+                    <p class="card-text">Consultar, editar y eliminar cuentas del sistema.</p>
+                    <a asp-page="/Usuarios/Index" class="btn btn-primario mt-auto">Administrar usuarios</a>
+                </div>
+            </div>
+        </div>
+    }
     <div class="col-md-4">
         <div class="card card-modulo h-100">
-            <div class="card-header">Inventario / Productos</div>
+            <div class="card-header">Almacén</div>
             <div class="card-body d-flex flex-column">
-                <p class="card-text">Controlar el stock de bolígrafos, cuadernos, colores, hojas y más.</p>
-                <a asp-page="/Productos/Index" class="btn btn-primario mt-auto">Ir a Inventario</a>
+                <p class="card-text">Consultar existencias; administradores también pueden registrar, editar y eliminar productos.</p>
+                <a asp-page="/Productos/Index" class="btn btn-primario mt-auto">Ir al almacén</a>
             </div>
         </div>
     </div>
@@ -81,7 +93,12 @@
                         <td>@producto.Nombre</td>
                         <td>@producto.Marca</td>
                         <td><span class="badge badge-stock-bajo">@producto.Stock @producto.UnidadMedida</span></td>
-                        <td><a asp-page="/Productos/Edit" asp-route-id="@producto.IdProducto" class="btn btn-sm btn-arena">Reabastecer</a></td>
+                        <td>
+                            @if (User.IsInRole("ADMIN"))
+                            {
+                                <a asp-page="/Productos/Edit" asp-route-id="@producto.IdProducto" class="btn btn-sm btn-arena">Reabastecer</a>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>

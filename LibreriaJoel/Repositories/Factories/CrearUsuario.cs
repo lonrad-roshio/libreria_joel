@@ -4,19 +4,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LibreriaJoel.Repositories.Factories;
 
-public sealed class CrearUsuario : RepositoryCreator<Cliente>
+public sealed class CrearUsuario : RepositoryCreator<Usuario>
 {
     private readonly DbContext _database;
-    private readonly IRepository<Venta> _ventas;
 
-    public CrearUsuario(DbContext database, IRepository<Venta> ventas)
+    public CrearUsuario(DbContext database)
     {
         _database = database;
-        _ventas = ventas;
     }
 
-    public override IRepository<Cliente> Crear()
+    public override IRepository<Usuario> Crear()
     {
-        return new ClienteRepository(_database, _ventas);
+        return new UsuarioRepository(_database);
     }
 }

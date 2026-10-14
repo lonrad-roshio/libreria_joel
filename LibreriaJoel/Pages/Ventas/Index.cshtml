@@ -32,10 +32,9 @@
             <tr>
                 <th>#</th>
                 <th>Fecha</th>
-                <th>Cliente</th>
+                <th>Usuario</th>
                 <th>Items</th>
                 <th>Forma de pago</th>
-                <th>Cajero</th>
                 <th>Total</th>
                 <th class="text-end">Acciones</th>
             </tr>
@@ -46,10 +45,9 @@
                 <tr>
                     <td>@venta.IdVenta</td>
                     <td>@venta.Fecha.ToString("dd/MM/yyyy")</td>
-                    <td>@(venta.Cliente?.Nombre ?? "N/D")</td>
-                    <td>@venta.Detalle.Count</td>
+                    <td>@(venta.Usuario?.NombreUsuario ?? "N/D")</td>
+                    <td>@venta.Detalles.Count</td>
                     <td>@venta.FormaPago</td>
-                    <td>@venta.Cajero</td>
                     <td>Bs. @venta.Total.ToString("N2")</td>
                     <td class="text-end">
                         <a asp-page="Details" asp-route-id="@venta.IdVenta" class="btn btn-sm btn-outline-secondary">Ver</a>
@@ -60,7 +58,7 @@
             }
             @if (!Model.Ventas.Any())
             {
-                <tr><td colspan="8" class="text-center text-muted py-3">No hay ventas registradas.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-3">No hay ventas registradas.</td></tr>
             }
         </tbody>
     </table>

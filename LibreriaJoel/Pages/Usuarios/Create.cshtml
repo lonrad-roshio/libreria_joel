@@ -1,0 +1,58 @@
+@page "/Registro"
+@model LibreriaJoel.Pages.Usuarios.CreateModel
+@{
+    ViewData["Title"] = "Registro de usuario";
+}
+
+<h1 class="h4 mb-3" style="color:var(--azul-profesional)">Registro de usuario</h1>
+
+<div class="card card-modulo">
+    <div class="card-body">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Usuario.NombreUsuario" class="form-label">Nombre de usuario *</label>
+                <input asp-for="Usuario.NombreUsuario" class="form-control" autocomplete="username" />
+                <span asp-validation-for="Usuario.NombreUsuario" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Usuario.Nombre" class="form-label">Nombre completo *</label>
+                <input asp-for="Usuario.Nombre" class="form-control" />
+                <span asp-validation-for="Usuario.Nombre" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Contrasena" class="form-label">Contraseña (mínimo 12 caracteres) *</label>
+                <input asp-for="Contrasena" class="form-control" type="password" autocomplete="new-password" />
+                <span asp-validation-for="Contrasena" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Usuario.Rol" class="form-label">Rol *</label>
+                <select asp-for="Usuario.Rol" class="form-select">
+                    <option value="CAJERO">Cajero</option>
+                    <option value="ADMIN">Administrador</option>
+                </select>
+                <div class="form-text">Las cuentas administradoras pueden gestionar usuarios y el almacén.</div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Usuario.Direccion" class="form-label">Dirección</label>
+                <input asp-for="Usuario.Direccion" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Usuario.Celular" class="form-label">Celular</label>
+                <input asp-for="Usuario.Celular" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Usuario.NitCi" class="form-label">NIT / CI</label>
+                <input asp-for="Usuario.NitCi" class="form-control" />
+            </div>
+
+            <button type="submit" class="btn btn-primario">Guardar</button>
+            <a asp-page="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

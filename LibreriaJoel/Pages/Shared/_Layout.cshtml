@@ -21,18 +21,38 @@
                 </button>
                 <div class="collapse navbar-collapse" id="menuPrincipal">
                     <ul class="navbar-nav ms-auto mb-2 mb-md-0">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Index">Inicio</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Clientes/Index">Clientes</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Productos/Index">Inventario</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Ventas/Index">Ventas</a>
-                        </li>
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Index">Inicio</a>
+                            </li>
+                            @if (User.IsInRole("ADMIN"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-page="/Usuarios/Create">Registro</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-page="/Usuarios/Index">Control de usuarios</a>
+                                </li>
+                            }
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Productos/Index">Almacén</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Ventas/Index">Ventas</a>
+                            </li>
+                            <li class="nav-item">
+                                <form method="post" asp-page="/Account/Logout" class="d-flex">
+                                    <button type="submit" class="btn nav-link">Cerrar sesión (@User.Identity.Name)</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Account/Login">Iniciar sesión</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>

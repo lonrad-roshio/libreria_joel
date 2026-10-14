@@ -2,36 +2,26 @@ using LibreriaJoel.Models;
 using LibreriaJoel.Services.Exceptions;
 using LibreriaJoel.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Text.Json;
+using System.Security.Claims;
 
 namespace LibreriaJoel.Pages.Ventas;
 
 public class CreateModel : PageModel
 {
-    private static readonly JsonSerializerOptions OpcionesJson = new JsonSerializerOptions
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     private readonly IVentaService _ventaService;
-    private readonly IClienteService _clienteService;
     private readonly IProductoService _productoService;
 
-    public CreateModel(IVentaService ventaService, IClienteService clienteService, IProductoService productoService)
+    public CreateModel(IVentaService ventaService, IProductoService productoService)
     {
         _ventaService = ventaService;
-        _clienteService = clienteService;
         _productoService = productoService;
     }
 
     [BindProperty]
     public Venta Venta { get; set; } = new();
 
-    public List<SelectListItem> Clientes { get; set; } = new();
     public List<Producto> Productos { get; set; } = new();
-    public string ProductosJson { get; set; } = "[]";
 
     public async Task OnGetAsync()
     {
@@ -41,10 +31,11 @@ public class CreateModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        // El detalle (lista de productos) llega serializado en Venta.DetalleJson desde el JS
-        // del formulario (ver wwwroot/js/ventas.js); no se valida con [Required] estándar
-        // porque su contenido es dinámico, se valida explícitamente en el servicio.
         ModelState.Remove("Venta.Total");
+
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var idUsuario))
+            return Forbid();
+        Venta.IdUsuario = idUsuario;
 
         if (!ModelState.IsValid)
         {
@@ -68,11 +59,6 @@ public class CreateModel : PageModel
 
     private async Task CargarListasAsync()
     {
-        var clientes = await _clienteService.ListarAsync(null);
-        Clientes = new List<SelectListItem>();
-        foreach (var cliente in clientes)
-            Clientes.Add(new SelectListItem(cliente.Nombre, cliente.IdCliente.ToString()));
-
         var todosProductos = await _productoService.ListarAsync(null);
         Productos = new List<Producto>();
         foreach (var producto in todosProductos)
@@ -81,6 +67,5 @@ public class CreateModel : PageModel
                 Productos.Add(producto);
         }
 
-        ProductosJson = JsonSerializer.Serialize(Productos, OpcionesJson);
     }
 }

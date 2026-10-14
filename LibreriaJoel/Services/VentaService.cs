@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ClosedXML.Excel;
 using LibreriaJoel.Models;
 using LibreriaJoel.Repositories.Interfaces;
@@ -11,16 +10,16 @@ public class VentaService : IVentaService
 {
     private readonly IVentaRepository _ventas;
     private readonly IProductoRepository _productos;
-    private readonly IClienteRepository _clientes;
+    private readonly IUsuarioRepository _usuarios;
 
     public VentaService(
         IVentaRepository ventas,
         IProductoRepository productos,
-        IClienteRepository clientes)
+        IUsuarioRepository usuarios)
     {
         _ventas = ventas;
         _productos = productos;
-        _clientes = clientes;
+        _usuarios = usuarios;
     }
 
     public Task<List<Venta>> ListarAsync(DateTime? fecha = null)
@@ -40,10 +39,10 @@ public class VentaService : IVentaService
 
     public async Task RegistrarVentaAsync(Venta venta)
     {
-        var detalle = ObtenerDetalle(venta);
+        var detalle = venta.Detalles.ToList();
         await ValidarVentaAsync(venta, detalle);
         await AjustarStockAsync(detalle, 1);
-        venta.Detalle = detalle;
+        venta.Detalles = detalle;
         venta.Total = CalcularTotal(detalle);
         await _ventas.InsertAsync(venta);
     }
@@ -52,17 +51,22 @@ public class VentaService : IVentaService
     {
         var existente = await _ventas.FindAsync(ventaOriginal.IdVenta)
             ?? throw new ValidacionException("La venta no existe.");
-        var detalleNuevo = ObtenerDetalle(venta);
-        var detalleAnterior = ObtenerDetalle(ventaOriginal);
+        var detalleNuevo = venta.Detalles.ToList();
+        var detalleAnterior = existente.Detalles.ToList();
+        venta.IdUsuario = existente.IdUsuario;
         await ValidarVentaAsync(venta, detalleNuevo);
 
         await AjustarStockAsync(detalleAnterior, -1);
         await AjustarStockAsync(detalleNuevo, 1);
         existente.Fecha = venta.Fecha;
-        existente.IdCliente = venta.IdCliente;
         existente.FormaPago = venta.FormaPago;
-        existente.Cajero = venta.Cajero.Trim();
-        existente.Detalle = detalleNuevo;
+        existente.Detalles.Clear();
+        foreach (var item in detalleNuevo)
+        {
+            item.IdDetalle = 0;
+            item.IdVenta = existente.IdVenta;
+            existente.Detalles.Add(item);
+        }
         existente.Total = CalcularTotal(detalleNuevo);
         await _ventas.UpdateAsync(existente);
     }
@@ -71,9 +75,8 @@ public class VentaService : IVentaService
     {
         var venta = await _ventas.FindAsync(id)
             ?? throw new ValidacionException("La venta no existe.");
-        var detalle = ObtenerDetalle(venta);
 
-        await AjustarStockAsync(detalle, -1);
+        await AjustarStockAsync(venta.Detalles.ToList(), -1);
         await _ventas.DeleteAsync(venta);
     }
 
@@ -86,9 +89,9 @@ public class VentaService : IVentaService
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add("Ventas");
         sheet.Cell(1, 1).Value = "Fecha";
-        sheet.Cell(1, 2).Value = "Cliente";
+        sheet.Cell(1, 2).Value = "Nombre del usuario";
         sheet.Cell(1, 3).Value = "Forma de pago";
-        sheet.Cell(1, 4).Value = "Cajero";
+        sheet.Cell(1, 4).Value = "Nombre de usuario";
         sheet.Cell(1, 5).Value = "Total";
 
         for (var index = 0; index < ventas.Count; index++)
@@ -96,9 +99,9 @@ public class VentaService : IVentaService
             var venta = ventas[index];
             var row = index + 2;
             sheet.Cell(row, 1).Value = venta.Fecha;
-            sheet.Cell(row, 2).Value = venta.Cliente?.Nombre ?? string.Empty;
+            sheet.Cell(row, 2).Value = venta.Usuario?.Nombre ?? string.Empty;
             sheet.Cell(row, 3).Value = venta.FormaPago;
-            sheet.Cell(row, 4).Value = venta.Cajero;
+            sheet.Cell(row, 4).Value = venta.Usuario?.NombreUsuario ?? string.Empty;
             sheet.Cell(row, 5).Value = venta.Total;
         }
 
@@ -109,57 +112,36 @@ public class VentaService : IVentaService
         return stream.ToArray();
     }
 
-    private static List<DetalleVentaItem> ObtenerDetalle(Venta venta)
+    private async Task ValidarVentaAsync(Venta venta, List<DetalleVenta> detalle)
     {
-        if (venta.Detalle.Count > 0)
-            return venta.Detalle;
+        venta.Detalles = detalle;
+        var errorVenta = Validaciones.ValidarVenta(venta);
+        if (errorVenta is not null)
+            throw new ValidacionException(errorVenta);
 
-        if (string.IsNullOrWhiteSpace(venta.DetalleJson))
-            return new List<DetalleVentaItem>();
-
-        try
-        {
-            return JsonSerializer.Deserialize<List<DetalleVentaItem>>(venta.DetalleJson) ?? new();
-        }
-        catch (JsonException exception)
-        {
-            throw new ValidacionException($"El detalle de la venta no tiene un formato válido: {exception.Message}");
-        }
-    }
-
-    private async Task ValidarVentaAsync(Venta venta, List<DetalleVentaItem> detalle)
-    {
-        var cliente = await _clientes.FindAsync(venta.IdCliente);
-        if (cliente is null)
-            throw new ValidacionException("El cliente seleccionado no existe.");
-        if (detalle.Count == 0)
-            throw new ValidacionException("La venta debe incluir al menos un producto.");
-        foreach (var item in detalle)
-        {
-            if (!Validaciones.ValidarIdentificador(item.IdProducto)
-                || !Validaciones.ValidarCantidad(item.Cantidad)
-                || !Validaciones.ValidarPrecio(0.01m, item.PrecioUnitario))
-            {
-                throw new ValidacionException("Cada producto debe tener una cantidad y un precio mayores a cero.");
-            }
-        }
-        if (string.IsNullOrWhiteSpace(venta.Cajero))
-            throw new ValidacionException("El cajero es obligatorio.");
-        if (string.IsNullOrWhiteSpace(venta.FormaPago))
-            throw new ValidacionException("La forma de pago es obligatoria.");
+        if (!Validaciones.ValidarIdentificador(venta.IdUsuario)
+            || await _usuarios.FindAsync(venta.IdUsuario) is null)
+            throw new ValidacionException("El usuario que registra la venta no existe.");
 
         var productos = await _productos.SelectAsync();
         foreach (var item in detalle)
         {
+            var errorDetalle = Validaciones.ValidarDetalleVenta(item);
+            if (errorDetalle is not null)
+                throw new ValidacionException(errorDetalle);
+
             Producto? producto = BuscarProducto(productos, item.IdProducto);
             if (producto == null)
                 throw new ValidacionException($"El producto {item.IdProducto} no existe.");
             if (!producto.Estado)
                 throw new ValidacionException($"El producto '{producto.Nombre}' está inactivo.");
+
+            item.PrecioUnitario = producto.PrecioVenta;
+            item.Subtotal = item.Cantidad * item.PrecioUnitario;
         }
     }
 
-    private async Task AjustarStockAsync(List<DetalleVentaItem> detalle, int factor)
+    private async Task AjustarStockAsync(List<DetalleVenta> detalle, int factor)
     {
         var productosProcesados = new HashSet<int>();
         foreach (var item in detalle)
@@ -187,7 +169,7 @@ public class VentaService : IVentaService
         }
     }
 
-    private static decimal CalcularTotal(List<DetalleVentaItem> detalle)
+    private static decimal CalcularTotal(List<DetalleVenta> detalle)
     {
         decimal total = 0;
         foreach (var item in detalle)

@@ -1,26 +1,28 @@
 using LibreriaJoel.Models;
 using LibreriaJoel.Services.Exceptions;
 using LibreriaJoel.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace LibreriaJoel.Pages.Clientes;
+namespace LibreriaJoel.Pages.Usuarios;
 
+[Authorize(Roles = "ADMIN")]
 public class DeleteModel : PageModel
 {
-    private readonly IClienteService _clienteService;
+    private readonly IUsuarioService _usuarioService;
 
-    public DeleteModel(IClienteService clienteService)
+    public DeleteModel(IUsuarioService usuarioService)
     {
-        _clienteService = clienteService;
+        _usuarioService = usuarioService;
     }
 
-    public Cliente? Cliente { get; set; }
+    public Usuario? Usuario { get; set; }
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        Cliente = await _clienteService.ObtenerAsync(id);
-        if (Cliente is null) return RedirectToPage("Index");
+        Usuario = await _usuarioService.ObtenerAsync(id);
+        if (Usuario is null) return RedirectToPage("Index");
         return Page();
     }
 
@@ -28,8 +30,8 @@ public class DeleteModel : PageModel
     {
         try
         {
-            await _clienteService.EliminarAsync(id);
-            TempData["Mensaje"] = "Cliente eliminado correctamente.";
+            await _usuarioService.EliminarAsync(id);
+            TempData["Mensaje"] = "Usuario eliminado correctamente.";
         }
         catch (ValidacionException ex)
         {

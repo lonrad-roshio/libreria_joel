@@ -67,12 +67,9 @@ public class ProductoService : IProductoService
 
     private async Task ValidarAsync(Producto producto, int? excluirId = null)
     {
-        if (string.IsNullOrWhiteSpace(producto.Nombre) || string.IsNullOrWhiteSpace(producto.Marca))
-            throw new ValidacionException("El nombre y la marca son obligatorios.");
-        if (!Validaciones.ValidarPrecio(producto.CostoEntrada, producto.PrecioVenta))
-            throw new ValidacionException("El precio de venta no puede ser menor al costo de entrada.");
-        if (!Validaciones.ValidarStock(producto.Stock))
-            throw new ValidacionException("El stock no puede ser negativo.");
+        var error = Validaciones.ValidarProducto(producto);
+        if (error is not null)
+            throw new ValidacionException(error);
         if (await _repository.ExisteNombreMarcaAsync(producto.Nombre.Trim(), producto.Marca.Trim(), excluirId))
             throw new ValidacionException("Ya existe un producto con el mismo nombre y marca.");
     }
